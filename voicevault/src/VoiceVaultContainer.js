@@ -5,7 +5,7 @@ import { useAuth } from "./AuthContext";
 /**
  * PUBLIC_INTERFACE
  * Main container component for VoiceVault (ColorCraft frontend Container).
- * Provides voice recording, listing, playback, download, and delete features.
+ * Provides voice recording, listing, playback, download, delete, and transcript features.
  * Now supports per-user notes using localStorage isolation, requires login.
  */
 function VoiceVaultContainer() {
@@ -21,14 +21,20 @@ function VoiceVaultContainer() {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recordings, setRecordings] = useState([]);
-  const [recordingChunks] = useState([]); // We now use a direct array, not state
+  // const [recordingChunks] = useState([]); // not used
   const [error, setError] = useState(null);
   const audioRefs = useRef({}); // For multiple audio elements
+
+  // Transcript states (per recording ID): { [recordingId]: transcript string }
+  const [transcripts, setTranscripts] = useState({});
+  // For transcript generation UI state; which note is being transcribed
+  const [transcribingId, setTranscribingId] = useState(null);
 
   // Load recordings for this user from localStorage on mount/login
   useEffect(() => {
     if (!user) {
-      setRecordings([]); // No user, no notes
+      setRecordings([]);
+      setTranscripts({});
       return;
     }
     const key = getStorageKey();
@@ -36,6 +42,13 @@ function VoiceVaultContainer() {
       localStorage.getItem(key) || "[]"
     );
     setRecordings(savedRecordings);
+
+    // Load transcripts from localStorage (so transcript survives refresh)
+    const transcriptKey = `${key}-transcripts`;
+    const savedTranscripts = JSON.parse(
+      localStorage.getItem(transcriptKey) || "{}"
+    );
+    setTranscripts(savedTranscripts);
     // eslint-disable-next-line
   }, [user?.id]);
 
@@ -45,6 +58,13 @@ function VoiceVaultContainer() {
     const key = getStorageKey();
     localStorage.setItem(key, JSON.stringify(recordings));
   }, [recordings, user]);
+
+  // Save transcripts to localStorage whenever they change (scoped to user)
+  useEffect(() => {
+    if (!user) return;
+    const key = getStorageKey();
+    localStorage.setItem(`${key}-transcripts`, JSON.stringify(transcripts));
+  }, [transcripts, user]);
 
   // PUBLIC_INTERFACE
   // Start recording audio from mic
@@ -103,6 +123,12 @@ function VoiceVaultContainer() {
     if (audioRefs.current[id]?.src) {
       URL.revokeObjectURL(audioRefs.current[id].src);
     }
+    setTranscripts((prev) => {
+      // Remove transcript as well
+      const newT = { ...prev };
+      delete newT[id];
+      return newT;
+    });
   };
 
   // PUBLIC_INTERFACE
@@ -124,6 +150,86 @@ function VoiceVaultContainer() {
   const handlePlayback = (id) => {
     if (audioRefs.current[id]) {
       audioRefs.current[id].play();
+    }
+  };
+
+  // PUBLIC_INTERFACE
+  // Transcript: Generate transcript for a given recording using Web Speech API
+  // Plays the audio and uses SpeechRecognition on mic loopback.
+  const handleTranscript = (rec) => {
+    // If already transcribing this note, do nothing
+    if (transcribingId === rec.id) return;
+
+    // Reset previous transcript for this ID
+    setTranscripts((t) => ({ ...t, [rec.id]: "" }));
+    setTranscribingId(rec.id);
+
+    // Web Speech API setup
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError(
+        "Web Speech API is not supported in this browser for transcription."
+      );
+      setTranscribingId(null);
+      return;
+    }
+
+    // Create recognition session
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    let transcriptSoFar = "";
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + " ";
+        } else {
+          // Also echo interim as "preview" (useful for UI)
+          transcriptSoFar += transcript;
+        }
+      }
+      setTranscripts((t) => ({
+        ...t,
+        [rec.id]: (finalTranscript + transcriptSoFar).trim(),
+      }));
+    };
+
+    recognition.onerror = (event) => {
+      setError(
+        "Error while using speech recognition: " +
+          (event.error || "Unknown error")
+      );
+      setTranscribingId(null);
+    };
+
+    recognition.onend = () => {
+      setTranscribingId(null);
+    };
+
+    // Play audio and recognize simultaneously
+    // This is best-effort: user must play the audio on speakers for real microphone loopback,
+    // else the transcript will be empty. We prompt them to play for best accuracy.
+    try {
+      // Start recognition
+      recognition.start();
+    } catch (e) {
+      setError("Could not start speech recognition (already in progress?)");
+      setTranscribingId(null);
+      return;
+    }
+
+    // Play the audio for the user
+    if (audioRefs.current[rec.id]) {
+      audioRefs.current[rec.id].pause();
+      audioRefs.current[rec.id].currentTime = 0;
+      // Playing after a small delay to allow recognition start first
+      setTimeout(() => audioRefs.current[rec.id].play(), 300);
     }
   };
 
@@ -260,7 +366,74 @@ function VoiceVaultContainer() {
                       />
                     </svg>
                   </button>
+                  <button
+                    className="btn-control"
+                    style={{
+                      borderColor: "#1976D2",
+                      color: "#fff",
+                      background: "#1976D2",
+                      minWidth: 70,
+                      marginLeft: 3,
+                      padding: "0 7px"
+                    }}
+                    title="Transcript"
+                    aria-label={`Get transcript for ${rec.name}`}
+                    onClick={() => handleTranscript(rec)}
+                    disabled={!!transcribingId}
+                  >
+                    {transcribingId === rec.id ? (
+                      <span style={{ display: "inline-flex", alignItems: "center" }}>
+                        <svg width={14} height={14} style={{ marginRight: 4 }} viewBox="0 0 20 20">
+                          <circle cx="10" cy="10" r="6" fill="#FF4081">
+                            <animate
+                              attributeName="r"
+                              from="6"
+                              to="8"
+                              dur="1s"
+                              repeatCount="indefinite"
+                              values="6;8;6"
+                            />
+                          </circle>
+                        </svg>
+                        Transcribing...
+                      </span>
+                    ) : (
+                      <>Transcript</>
+                    )}
+                  </button>
                 </div>
+                {/* Transcript Display */}
+                {transcripts[rec.id] && (
+                  <div style={{
+                    background: "#f4faff",
+                    color: "#19203A",
+                    borderRadius: 6,
+                    fontSize: "1.01em",
+                    margin: "10px 0 0 0",
+                    padding: "10px 13px",
+                    boxShadow: "0 1.5px 8px #97bbea19"
+                  }}>
+                    <div style={{
+                      fontWeight: 500,
+                      marginBottom: 4,
+                      color: "#1976D2",
+                      fontSize: ".96em"
+                    }}>
+                      Transcript:
+                    </div>
+                    <span>{transcripts[rec.id]}</span>
+                  </div>
+                )}
+                {/* Guide for transcript */}
+                {transcribingId === rec.id && (
+                  <div style={{
+                    color: "#888",
+                    fontSize: ".97em",
+                    marginTop: "7px",
+                  }}>
+                    <strong>Tip:</strong> For best transcript accuracy, please play the audio with speakers (not headphones) so the computer's microphone can "hear" the playback.
+                  </div>
+                )}
               </li>
             ))}
           </ul>
