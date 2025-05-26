@@ -38,10 +38,16 @@
   font-size: 1.04rem;
   color: #555;
 }
-.error {
-  margin: 12px auto 0;
-  color: #D32F2F;
-  font-size: 1rem;
+.error,
+.form-error {
+  margin: 14px auto 0;
+  color: var(--error);
+  font-size: 1.05rem;
+  background: #fdeceb;
+  border-radius: 6px;
+  padding: 7px 10px;
+  text-align: center;
+  font-weight: 500;
 }
 
 .record-btn {
