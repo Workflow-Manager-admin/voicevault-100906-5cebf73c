@@ -1,32 +1,50 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./VoiceVaultContainer.css";
+import { useAuth } from "./AuthContext";
 
 /**
  * PUBLIC_INTERFACE
  * Main container component for VoiceVault (ColorCraft frontend Container).
  * Provides voice recording, listing, playback, download, and delete features.
+ * Now supports per-user notes using localStorage isolation, requires login.
  */
 function VoiceVaultContainer() {
+  // User from AuthContext
+  const { user } = useAuth();
+
+  // Get the storage key for this user's notes
+  function getStorageKey() {
+    return user ? `voicevault-recordings-${user.id}` : "voicevault-recordings";
+  }
+
   // State for recordings and mic/recording
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recordings, setRecordings] = useState([]);
-  const [recordingChunks, setRecordingChunks] = useState([]);
+  const [recordingChunks] = useState([]); // We now use a direct array, not state
   const [error, setError] = useState(null);
   const audioRefs = useRef({}); // For multiple audio elements
 
-  // Load recordings from localStorage on mount
+  // Load recordings for this user from localStorage on mount/login
   useEffect(() => {
+    if (!user) {
+      setRecordings([]); // No user, no notes
+      return;
+    }
+    const key = getStorageKey();
     const savedRecordings = JSON.parse(
-      localStorage.getItem("voicevault-recordings") || "[]"
+      localStorage.getItem(key) || "[]"
     );
     setRecordings(savedRecordings);
-  }, []);
+    // eslint-disable-next-line
+  }, [user?.id]);
 
-  // Save recordings to localStorage when recordings change
+  // Save recordings to localStorage whenever they change (scoped to user)
   useEffect(() => {
-    localStorage.setItem("voicevault-recordings", JSON.stringify(recordings));
-  }, [recordings]);
+    if (!user) return;
+    const key = getStorageKey();
+    localStorage.setItem(key, JSON.stringify(recordings));
+  }, [recordings, user]);
 
   // PUBLIC_INTERFACE
   // Start recording audio from mic
@@ -36,10 +54,6 @@ function VoiceVaultContainer() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new window.MediaRecorder(stream);
 
-      // Clear chunks before starting
-      setRecordingChunks([]);
-
-      // Use a local array to accumulate chunks and pass to onstop directly
       let chunks = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -116,6 +130,9 @@ function VoiceVaultContainer() {
   // Generate label for record button
   const recordLabel = isRecording ? "Stop Recording" : "Start Recording";
 
+  // Prevention: don't allow component use if not logged in (should be handled by parent, but robust)
+  if (!user) return null;
+
   return (
     <div className="voicevault-container">
       <div className="header">
@@ -132,7 +149,12 @@ function VoiceVaultContainer() {
           <span className="record-circle" />
           {recordLabel}
         </button>
-        <div className="desc">Your private voice locker, powered by your browser.</div>
+        <div className="desc">
+          Your private voice locker.
+          <span style={{ marginLeft: 10, color: "#888", fontWeight: 400 }}>
+            Signed in as <span style={{ color: "#1976D2" }}>{user.email}</span>
+          </span>
+        </div>
         {error && <div className="error">{error}</div>}
       </div>
       <div className="recordings-list-container">
