@@ -1,14 +1,23 @@
 .voicevault-container {
-  background: var(--container-bg, #fff);
-  margin: 48px auto;
-  max-width: 490px;
-  box-shadow: 0 4px 32px rgba(0,32,50, 0.10);
-  border-radius: 16px;
-  padding: 32px 20px 26px 20px;
-  min-height: 470px;
-  color: #212121;
+  background: var(--surface);
+  margin: 54px auto 48px auto;
+  max-width: 520px;
+  box-shadow: 0 5px 26px #1a1a1a1e, 0 0.5px 1.5px #e7e7fa1f;
+  border-radius: 18px;
+  padding: 30px 25px 30px 25px;
+  min-height: 485px;
+  color: #19203a;
   font-family: 'Inter', 'Roboto', Arial, sans-serif;
-  width: 94%;
+  width: 96%;
+}
+
+@media (max-width: 600px) {
+  .voicevault-container {
+    margin: 13px auto 18px auto;
+    padding: 11px 1.5vw 10px 1.5vw;
+    max-width: 99.7vw;
+    min-height: 315px;
+  }
 }
 
 .header {
