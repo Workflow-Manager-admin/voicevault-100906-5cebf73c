@@ -53,35 +53,46 @@
 .record-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  background: #1976D2;
+  background: var(--primary);
   color: #fff;
-  border-radius: 24px;
+  border-radius: 26px;
   border: none;
   cursor: pointer;
-  padding: 0.9em 1.65em;
-  font-size: 1.10rem;
-  font-weight: 500;
-  margin: 0 auto 12px auto;
-  box-shadow: 0 2px 8px rgba(25,118,210,.06);
-  transition: background 0.15s;
+  padding: 0.95em 1.7em;
+  font-size: 1.12rem;
+  font-weight: 600;
+  margin: 0 auto 16px auto;
+  box-shadow: 0 3px 14px #c1dafc34;
+  transition: background 0.14s, box-shadow 0.12s;
   min-width: 206px;
-  user-select: none;
+  outline: none;
 }
-.record-btn:focus,
+
+.record-btn:focus-visible {
+  box-shadow: var(--focus-shadow);
+}
+
+.record-btn:active {
+  background: #1250a8;
+}
+
 .record-btn:hover {
   background: #1250a8;
 }
-.record-btn.recording {
-  background: #FF4081;
+
+.record-btn[aria-pressed="true"], .record-btn.recording {
+  background: var(--accent);
 }
+
 .record-circle {
   display: inline-block;
   width: 16px;
   height: 16px;
   margin-right: 2px;
   border-radius: 50%;
-  background: #FF4081;
+  background: var(--accent);
   border: 2.5px solid #fff;
   box-shadow: 0 0 5px 2px #ff5e98a8;
   animation: pulse 1s infinite;
@@ -89,7 +100,7 @@
 .record-btn:not(.recording) .record-circle {
   background: #fff;
   box-shadow: 0 0 0 0;
-  border: 2.5px solid #1976D2;
+  border: 2.5px solid var(--primary);
   animation: none;
 }
 @keyframes pulse {
