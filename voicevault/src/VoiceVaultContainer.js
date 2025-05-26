@@ -36,13 +36,18 @@ function VoiceVaultContainer() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new window.MediaRecorder(stream);
 
+      // Clear chunks before starting
+      setRecordingChunks([]);
+
+      // Use a local array to accumulate chunks and pass to onstop directly
+      let chunks = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          setRecordingChunks((prev) => [...prev, event.data]);
+          chunks.push(event.data);
         }
       };
       recorder.onstop = () => {
-        const blob = new Blob(recordingChunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
         const now = new Date();
         const recording = {
@@ -56,7 +61,6 @@ function VoiceVaultContainer() {
           blob, // store for download
         };
         setRecordings((prev) => [recording, ...prev]);
-        setRecordingChunks([]);
       };
       setMediaRecorder(recorder);
       recorder.start();
