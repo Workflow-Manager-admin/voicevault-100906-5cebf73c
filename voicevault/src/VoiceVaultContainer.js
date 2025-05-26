@@ -149,6 +149,18 @@ function VoiceVaultContainer() {
           <span className="record-circle" />
           {recordLabel}
         </button>
+        {isRecording && (
+          <div className="recording-indicator-visual" aria-live="polite">
+            <div className="waveform-indicator">
+              <span className="wf-bar" />
+              <span className="wf-bar" />
+              <span className="wf-bar" />
+              <span className="wf-bar" />
+              <span className="wf-bar" />
+            </div>
+            <span className="visually-hidden">Recording in progress</span>
+          </div>
+        )}
         <div className="desc">
           Your private voice locker.
           <span style={{ marginLeft: 10, color: "#888", fontWeight: 400 }}>
