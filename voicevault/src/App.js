@@ -4,7 +4,16 @@ import VoiceVaultContainer from './VoiceVaultContainer';
 import { AuthProvider, useAuth } from './AuthContext';
 import LoginPage from './LoginPage';
 
-// Renders navbar with logout/user info (if logged in)
+// Import react-router-dom v6+ APIs
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+
+// PUBLIC_INTERFACE
+// Navigation Bar with user info and logout button
 function NavigationBar() {
   const { user, logout } = useAuth();
 
@@ -31,30 +40,60 @@ function NavigationBar() {
   );
 }
 
-// App wrapper with AuthProvider
-function AppContainer() {
+// PUBLIC_INTERFACE
+// Wrapper for authentication-protected routes
+function PrivateRoute({ children }) {
+  const { user } = useAuth();
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+// PUBLIC_INTERFACE
+// Routing-aware Application Container
+function AppRouterContainer() {
   const { user } = useAuth();
 
   return (
-    <div className="app">
-      <NavigationBar />
-      <main>
-        {user ? (
-          <div className="container">
-            <VoiceVaultContainer />
-          </div>
-        ) : (
-          <LoginPage />
-        )}
-      </main>
-    </div>
+    <Router>
+      <div className="app">
+        <NavigationBar />
+        <main>
+          <Routes>
+            {/* Main Vault: authenticated access only */}
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <div className="container">
+                    <VoiceVaultContainer />
+                  </div>
+                </PrivateRoute>
+              }
+            />
+            {/* Login page */}
+            <Route
+              path="/login"
+              element={
+                user ? <Navigate to="/" replace /> : <LoginPage />
+              }
+            />
+            {/* Catch-all: redirect to main */}
+            <Route path="*" element={<Navigate to={user ? "/" : "/login"} replace />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
+// PUBLIC_INTERFACE
+// App root with AuthProvider and routing
 function App() {
   return (
     <AuthProvider>
-      <AppContainer />
+      <AppRouterContainer />
     </AuthProvider>
   );
 }
