@@ -1,5 +1,6 @@
 import React from 'react';
 import './App.css';
+import VoiceVaultContainer from './VoiceVaultContainer';
 
 function App() {
   return (
@@ -10,24 +11,13 @@ function App() {
             <div className="logo">
               <span className="logo-symbol">*</span> KAVIA AI
             </div>
-            <button className="btn">Template Button</button>
+            {/* Remove template nav button for clean look */}
           </div>
         </div>
       </nav>
-
       <main>
         <div className="container">
-          <div className="hero">
-            <div className="subtitle">AI Workflow Manager Template</div>
-            
-            <h1 className="title">voicevault</h1>
-            
-            <div className="description">
-              Start building your application.
-            </div>
-            
-            <button className="btn btn-large">Button</button>
-          </div>
+          <VoiceVaultContainer />
         </div>
       </main>
     </div>
